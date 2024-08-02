@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Análisis tuberculosis en ganaderías de vacuno de la provincia de Ciudad Real (datos de 2011)</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="data/DatosTBporhexgono_4.js"></script>
+        <script src="data/DatosTBpormunicipio_5.js"></script>
+        <script src="data/Puntosoriginales_6.js"></script>
+        <script src="data/ProvinciadeCiudadReal_7.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var title = new L.Control({'position':'topleft'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Análisis tuberculosis en ganaderías de vacuno de la provincia de Ciudad Real (datos de 2011)</h2>';
+        };
+        title.addTo(map);
+        var abstract = new L.Control({'position':'bottomright'});
+        abstract.onAdd = function (map) {
+            this._div = L.DomUtil.create('div',
+            'leaflet-control abstract');
+            this._div.id = 'abstract'
+
+                abstract.show();
+                return this._div;
+            };
+            abstract.show = function () {
+                this._div.classList.remove("abstract");
+                this._div.classList.add("abstractUncollapsed");
+                this._div.innerHTML = 'Integrating Geographic Information Systems (GIS) into Veterinary Education: An Interdisciplinary Approach <br />Contreras, A., Cuevas, V., Rivera-Gomis, J., Vicente, J. ';
+        };
+        abstract.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        map.createPane('pane_MapabaseGoogleSatellite_0');
+        map.getPane('pane_MapabaseGoogleSatellite_0').style.zIndex = 400;
+        var layer_MapabaseGoogleSatellite_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            pane: 'pane_MapabaseGoogleSatellite_0',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_MapabaseGoogleSatellite_0;
+        map.createPane('pane_MapabaseOpenStreetMaps_1');
+        map.getPane('pane_MapabaseOpenStreetMaps_1').style.zIndex = 401;
+        var layer_MapabaseOpenStreetMaps_1 = L.tileLayer('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'pane_MapabaseOpenStreetMaps_1',
+            opacity: 1.0,
+            attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, CC-BY-SA</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_MapabaseOpenStreetMaps_1;
+        map.createPane('pane_MapabasePositronnolabels_2');
+        map.getPane('pane_MapabasePositronnolabels_2').style.zIndex = 402;
+        var layer_MapabasePositronnolabels_2 = L.tileLayer('https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png', {
+            pane: 'pane_MapabasePositronnolabels_2',
+            opacity: 1.0,
+            attribution: '<a href="https://cartodb.com/basemaps/">Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_MapabasePositronnolabels_2;
+        map.addLayer(layer_MapabasePositronnolabels_2);
+        map.createPane('pane_Mapadecalorpuntosoriginalesincidencia_3');
+        map.getPane('pane_Mapadecalorpuntosoriginalesincidencia_3').style.zIndex = 403;
+        var img_Mapadecalorpuntosoriginalesincidencia_3 = 'data/Mapadecalorpuntosoriginalesincidencia_3.png';
+        var img_bounds_Mapadecalorpuntosoriginalesincidencia_3 = [[38.27935889484958,-5.124153846748036],[39.653187008229054,-2.596577043816326]];
+        var layer_Mapadecalorpuntosoriginalesincidencia_3 = new L.imageOverlay(img_Mapadecalorpuntosoriginalesincidencia_3,
+                                              img_bounds_Mapadecalorpuntosoriginalesincidencia_3,
+                                              {pane: 'pane_Mapadecalorpuntosoriginalesincidencia_3'});
+        bounds_group.addLayer(layer_Mapadecalorpuntosoriginalesincidencia_3);
+        function pop_DatosTBporhexgono_4(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">ID</th>\
+                        <td>' + (feature.properties['fid'] !== null ? autolinker.link(feature.properties['fid'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">ID hexágono (HexEU)</th>\
+                        <td>' + (feature.properties['HEXEUID'] !== null ? autolinker.link(feature.properties['HEXEUID'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Nº positivos TB
+</th>\
+                        <td>' + (feature.properties['Suma de Po'] !== null ? autolinker.link(feature.properties['Suma de Po'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Prevalencia (%)
+</th>\
+                        <td>' + (feature.properties['Preva %'] !== null ? autolinker.link(feature.properties['Preva %'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Incidencia (%)
+</th>\
+                        <td>' + (feature.properties['Incidencia'] !== null ? autolinker.link(feature.properties['Incidencia'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_DatosTBporhexgono_4_0(feature) {
+            if (feature.properties['Incidencia'] >= 0.000000 && feature.properties['Incidencia'] <= 0.000000 ) {
+                return {
+                pane: 'pane_DatosTBporhexgono_4',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,255,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.000000 && feature.properties['Incidencia'] <= 0.020000 ) {
+                return {
+                pane: 'pane_DatosTBporhexgono_4',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,191,191,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.020000 && feature.properties['Incidencia'] <= 0.032313 ) {
+                return {
+                pane: 'pane_DatosTBporhexgono_4',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,128,128,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.032313 && feature.properties['Incidencia'] <= 0.060976 ) {
+                return {
+                pane: 'pane_DatosTBporhexgono_4',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,64,64,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.060976 && feature.properties['Incidencia'] <= 0.084746 ) {
+                return {
+                pane: 'pane_DatosTBporhexgono_4',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,0,0,1.0)',
+                interactive: true,
+            }
+            }
+        }
+        map.createPane('pane_DatosTBporhexgono_4');
+        map.getPane('pane_DatosTBporhexgono_4').style.zIndex = 404;
+        map.getPane('pane_DatosTBporhexgono_4').style['mix-blend-mode'] = 'normal';
+        var layer_DatosTBporhexgono_4 = new L.geoJson(json_DatosTBporhexgono_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_DatosTBporhexgono_4',
+            layerName: 'layer_DatosTBporhexgono_4',
+            pane: 'pane_DatosTBporhexgono_4',
+            onEachFeature: pop_DatosTBporhexgono_4,
+            style: style_DatosTBporhexgono_4_0,
+        });
+        bounds_group.addLayer(layer_DatosTBporhexgono_4);
+        function pop_DatosTBpormunicipio_5(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">ID</th>\
+                        <td>' + (feature.properties['fid'] !== null ? autolinker.link(feature.properties['fid'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Municipio</th>\
+                        <td>' + (feature.properties['NAMEUNIT'] !== null ? autolinker.link(feature.properties['NAMEUNIT'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Nº positivos TB</th>\
+                        <td>' + (feature.properties['Suma de Po'] !== null ? autolinker.link(feature.properties['Suma de Po'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Prevalencia (%)
+</th>\
+                        <td>' + (feature.properties['Preva %'] !== null ? autolinker.link(feature.properties['Preva %'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Incidencia (%)
+</th>\
+                        <td>' + (feature.properties['Incidencia'] !== null ? autolinker.link(feature.properties['Incidencia'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_DatosTBpormunicipio_5_0(feature) {
+            if (feature.properties['Incidencia'] >= 0.000000 && feature.properties['Incidencia'] <= 0.000000 ) {
+                return {
+                pane: 'pane_DatosTBpormunicipio_5',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,255,255,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.000000 && feature.properties['Incidencia'] <= 0.012048 ) {
+                return {
+                pane: 'pane_DatosTBpormunicipio_5',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,191,191,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.012048 && feature.properties['Incidencia'] <= 0.032313 ) {
+                return {
+                pane: 'pane_DatosTBpormunicipio_5',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,128,128,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.032313 && feature.properties['Incidencia'] <= 0.060976 ) {
+                return {
+                pane: 'pane_DatosTBpormunicipio_5',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,64,64,1.0)',
+                interactive: true,
+            }
+            }
+            if (feature.properties['Incidencia'] >= 0.060976 && feature.properties['Incidencia'] <= 0.084746 ) {
+                return {
+                pane: 'pane_DatosTBpormunicipio_5',
+                opacity: 1,
+                color: 'rgba(135,135,135,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,0,0,1.0)',
+                interactive: true,
+            }
+            }
+        }
+        map.createPane('pane_DatosTBpormunicipio_5');
+        map.getPane('pane_DatosTBpormunicipio_5').style.zIndex = 405;
+        map.getPane('pane_DatosTBpormunicipio_5').style['mix-blend-mode'] = 'normal';
+        var layer_DatosTBpormunicipio_5 = new L.geoJson(json_DatosTBpormunicipio_5, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_DatosTBpormunicipio_5',
+            layerName: 'layer_DatosTBpormunicipio_5',
+            pane: 'pane_DatosTBpormunicipio_5',
+            onEachFeature: pop_DatosTBpormunicipio_5,
+            style: style_DatosTBpormunicipio_5_0,
+        });
+        bounds_group.addLayer(layer_DatosTBpormunicipio_5);
+        function pop_Puntosoriginales_6(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">ID</th>\
+                        <td>' + (feature.properties['Etiquetas'] !== null ? autolinker.link(feature.properties['Etiquetas'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Tipo de producción</th>\
+                        <td>' + (feature.properties['Aptitud'] !== null ? autolinker.link(feature.properties['Aptitud'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Nº positivos TB</th>\
+                        <td>' + (feature.properties['Suma de Po'] !== null ? autolinker.link(feature.properties['Suma de Po'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['preval si/'] !== null ? autolinker.link(feature.properties['preval si/'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Prevalencia (%)</th>\
+                        <td>' + (feature.properties['Preva %'] !== null ? autolinker.link(feature.properties['Preva %'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Inc si/no'] !== null ? autolinker.link(feature.properties['Inc si/no'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Incidencia (%)</th>\
+                        <td>' + (feature.properties['Incidencia'] !== null ? autolinker.link(feature.properties['Incidencia'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Coordenada UTM x</th>\
+                        <td>' + (feature.properties['X'] !== null ? autolinker.link(feature.properties['X'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Coordenada UTM y</th>\
+                        <td>' + (feature.properties['Y'] !== null ? autolinker.link(feature.properties['Y'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Puntosoriginales_6_0() {
+            return {
+                pane: 'pane_Puntosoriginales_6',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(176,0,0,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(229,182,54,0.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_Puntosoriginales_6');
+        map.getPane('pane_Puntosoriginales_6').style.zIndex = 406;
+        map.getPane('pane_Puntosoriginales_6').style['mix-blend-mode'] = 'normal';
+        var layer_Puntosoriginales_6 = new L.geoJson(json_Puntosoriginales_6, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Puntosoriginales_6',
+            layerName: 'layer_Puntosoriginales_6',
+            pane: 'pane_Puntosoriginales_6',
+            onEachFeature: pop_Puntosoriginales_6,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Puntosoriginales_6_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Puntosoriginales_6);
+        function pop_ProvinciadeCiudadReal_7(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['INSPIREID'] !== null ? autolinker.link(feature.properties['INSPIREID'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['COUNTRY'] !== null ? autolinker.link(feature.properties['COUNTRY'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['NATLEV'] !== null ? autolinker.link(feature.properties['NATLEV'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['NATLEVNAME'] !== null ? autolinker.link(feature.properties['NATLEVNAME'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['NATCODE'] !== null ? autolinker.link(feature.properties['NATCODE'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['NAMEUNIT'] !== null ? autolinker.link(feature.properties['NAMEUNIT'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CODNUT1'] !== null ? autolinker.link(feature.properties['CODNUT1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CODNUT2'] !== null ? autolinker.link(feature.properties['CODNUT2'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['CODNUT3'] !== null ? autolinker.link(feature.properties['CODNUT3'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_ProvinciadeCiudadReal_7_0() {
+            return {
+                pane: 'pane_ProvinciadeCiudadReal_7',
+                opacity: 1,
+                color: 'rgba(101,101,101,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 3.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(254,0,93,0.0)',
+                interactive: false,
+            }
+        }
+        map.createPane('pane_ProvinciadeCiudadReal_7');
+        map.getPane('pane_ProvinciadeCiudadReal_7').style.zIndex = 407;
+        map.getPane('pane_ProvinciadeCiudadReal_7').style['mix-blend-mode'] = 'normal';
+        var layer_ProvinciadeCiudadReal_7 = new L.geoJson(json_ProvinciadeCiudadReal_7, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_ProvinciadeCiudadReal_7',
+            layerName: 'layer_ProvinciadeCiudadReal_7',
+            pane: 'pane_ProvinciadeCiudadReal_7',
+            onEachFeature: pop_ProvinciadeCiudadReal_7,
+            style: style_ProvinciadeCiudadReal_7_0,
+        });
+        bounds_group.addLayer(layer_ProvinciadeCiudadReal_7);
+        map.addLayer(layer_ProvinciadeCiudadReal_7);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var baseMaps = {};
+        var overlaysTree = [
+            {label: '<img src="legend/ProvinciadeCiudadReal_7.png" /> Provincia de Ciudad Real', layer: layer_ProvinciadeCiudadReal_7},
+        {label: '<b>ORIGINAL</b>', selectAllCheckbox: true, children: [
+            {label: '<img src="legend/Puntosoriginales_6.png" /> Puntos originales', layer: layer_Puntosoriginales_6},
+            {label: 'Datos TB por municipio<br /><table><tr><td style="text-align: center;"><img src="legend/DatosTBpormunicipio_5_000.png" /></td><td>0 - 0</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBpormunicipio_5_000121.png" /></td><td>0 - 0,012</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBpormunicipio_5_001200322.png" /></td><td>0,012 - 0,032</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBpormunicipio_5_003200613.png" /></td><td>0,032 - 0,061</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBpormunicipio_5_006100854.png" /></td><td>0,061 - 0,085</td></tr></table>', layer: layer_DatosTBpormunicipio_5},
+            {label: 'Datos TB por hexágono<br /><table><tr><td style="text-align: center;"><img src="legend/DatosTBporhexgono_4_000.png" /></td><td>0 - 0</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBporhexgono_4_00021.png" /></td><td>0 - 0,02</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBporhexgono_4_00200322.png" /></td><td>0,02 - 0,032</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBporhexgono_4_003200613.png" /></td><td>0,032 - 0,061</td></tr><tr><td style="text-align: center;"><img src="legend/DatosTBporhexgono_4_006100854.png" /></td><td>0,061 - 0,085</td></tr></table>', layer: layer_DatosTBporhexgono_4},
+            {label: "Mapa de calor puntos originales (% incidencia)", layer: layer_Mapadecalorpuntosoriginalesincidencia_3},]},
+            {label: "Mapa base: Positron [no labels]", layer: layer_MapabasePositronnolabels_2},
+            {label: "Mapa base: Open Street Maps", layer: layer_MapabaseOpenStreetMaps_1},
+            {label: "Mapa base: Google Satellite", layer: layer_MapabaseGoogleSatellite_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+        L.ImageOverlay.include({
+            getBounds: function () {
+                return this._bounds;
+            }
+        });
+        </script>
+    </body>
+</html>
